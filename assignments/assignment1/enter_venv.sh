@@ -1,3 +1,3 @@
 #!/bin/sh
 
-source .env/cs231n/bin/activate
+source .venv/bin/activate
