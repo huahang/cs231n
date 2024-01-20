@@ -29,16 +29,20 @@ def svm_loss_naive(W, X, y, reg):
   for i in xrange(num_train):
     scores = X[i].dot(W)
     correct_class_score = scores[y[i]]
+    num_classes_postive_margin = 0
     for j in xrange(num_classes):
       if j == y[i]:
         continue
       margin = scores[j] - correct_class_score + 1 # note delta = 1
       if margin > 0:
+        num_classes_postive_margin += 1
         loss += margin
-
+        dW[:,j] += X[i]
+    dW[:,y[i]] += -num_classes_postive_margin * X[i]
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
   loss /= num_train
+  dW /= num_train
 
   # Add regularization to the loss.
   loss += reg * np.sum(W * W)
@@ -70,7 +74,22 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  delta = 1
+  scores = X.dot(W)
+  num_train_interval = np.arange(num_train)
+  # num_train_interval = [0, 1, 2, 3, 4, 5, ..., 499]
+  # print("num_train_interval", num_train_interval)
+  correct_class_score = scores[num_train_interval, y]
+  correct_class_score = np.reshape(correct_class_score, (num_train, -1))
+  margins = np.maximum(0, scores - correct_class_score + delta)
+  # Set the correct class margin values as 0 to avoid adding it into the loss.
+  margins[num_train_interval, y] = 0
+  # Filter the margins that are equal or below 0
+  loss += margins.sum()
+  loss /= num_train
+  loss += reg * np.sum(W * W)
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
