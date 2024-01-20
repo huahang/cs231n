@@ -46,6 +46,7 @@ def svm_loss_naive(W, X, y, reg):
 
   # Add regularization to the loss.
   loss += reg * np.sum(W * W)
+  dW += 2 * reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -79,14 +80,11 @@ def svm_loss_vectorized(W, X, y, reg):
   scores = X.dot(W)
   num_train_interval = np.arange(num_train)
   # num_train_interval = [0, 1, 2, 3, 4, 5, ..., 499]
-  # print("num_train_interval", num_train_interval)
   correct_class_score = scores[num_train_interval, y]
   correct_class_score = np.reshape(correct_class_score, (num_train, -1))
   margins = np.maximum(0, scores - correct_class_score + delta)
-  # Set the correct class margin values as 0 to avoid adding it into the loss.
   margins[num_train_interval, y] = 0
-  # Filter the margins that are equal or below 0
-  loss += margins.sum()
+  loss += margins[margins > 0].sum()
   loss /= num_train
   loss += reg * np.sum(W * W)
 
@@ -104,7 +102,16 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  positive_margins = np.zeros(margins.shape)
+  positive_margins[margins > 0] = 1
+  dW += np.mat(X).T * np.mat(positive_margins)
+  summed_positive_margins = np.sum(positive_margins, axis=1)
+  y_mask = np.zeros(margins.shape)
+  y_mask[num_train_interval, y] = 1
+  y_mask = (y_mask.T * summed_positive_margins).T
+  dW -= np.mat(X).T * np.mat(y_mask)
+  dW /= num_train
+  dW += 2 * reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
