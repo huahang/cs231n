@@ -36,10 +36,15 @@ def softmax_loss_naive(W, X, y, reg):
     # The softmax function is shift invariant so we can subtract the max
     # for numerical stability
     f_i -= np.max(f_i)
-    loss -= np.log(np.exp(f_i[y[i]]) / np.exp(f_i).sum())
-    # dW += np.outer(X[i], scores)
+    softmax = np.exp(f_i) / np.exp(f_i).sum()
+    loss += - np.log(softmax[y[i]])
+    for j in range(W.shape[1]):
+      dW[:, j] += X[i] * softmax[j]
+    dW[:, y[i]] -= X[i]
   loss /= num_train
   loss += reg * np.sum(W * W)
+  dW /= num_train
+  dW += 2 * reg * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
