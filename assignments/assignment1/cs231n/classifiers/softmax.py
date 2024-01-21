@@ -1,6 +1,5 @@
 import numpy as np
 from random import shuffle
-from past.builtins import xrange
 
 def softmax_loss_naive(W, X, y, reg):
   """
@@ -20,6 +19,8 @@ def softmax_loss_naive(W, X, y, reg):
   - loss as single float
   - gradient with respect to weights W; an array of same shape as W
   """
+  num_train = X.shape[0]
+
   # Initialize the loss and gradient to zero.
   loss = 0.0
   dW = np.zeros_like(W)
@@ -30,7 +31,15 @@ def softmax_loss_naive(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  for i in range(num_train):
+    f_i = X[i].dot(W)
+    # The softmax function is shift invariant so we can subtract the max
+    # for numerical stability
+    f_i -= np.max(f_i)
+    loss -= np.log(np.exp(f_i[y[i]]) / np.exp(f_i).sum())
+    # dW += np.outer(X[i], scores)
+  loss /= num_train
+  loss += reg * np.sum(W * W)
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
@@ -60,4 +69,3 @@ def softmax_loss_vectorized(W, X, y, reg):
   #############################################################################
 
   return loss, dW
-
