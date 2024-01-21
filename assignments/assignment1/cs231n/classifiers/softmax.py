@@ -56,7 +56,19 @@ def softmax_loss_vectorized(W, X, y, reg):
   """
   Softmax loss function, vectorized version.
 
-  Inputs and outputs are the same as softmax_loss_naive.
+  Inputs have dimension D, there are C classes, and we operate on minibatches
+  of N examples.
+
+  Inputs:
+  - W: A numpy array of shape (D, C) containing weights.
+  - X: A numpy array of shape (N, D) containing a minibatch of data.
+  - y: A numpy array of shape (N,) containing training labels; y[i] = c means
+    that X[i] has label c, where 0 <= c < C.
+  - reg: (float) regularization strength
+
+  Returns a tuple of:
+  - loss as single float
+  - gradient with respect to weights W; an array of same shape as W
   """
   # Initialize the loss and gradient to zero.
   loss = 0.0
@@ -68,7 +80,15 @@ def softmax_loss_vectorized(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  N = X.shape[0]
+  C = W.shape[1]
+  D = W.shape[0]
+  f = X.dot(W) # (N, C)
+  f -= np.max(f, axis=1, keepdims=True)
+  softmax = np.exp(f) / np.exp(f).sum(axis=1, keepdims=True) # (N, C)
+  loss = np.sum(-np.log(softmax[np.arange(N), y])) / N + reg * np.sum(W * W)
+  softmax[np.arange(N), y] -= 1
+  dW = X.T.dot(softmax) / N + 2 * reg * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
