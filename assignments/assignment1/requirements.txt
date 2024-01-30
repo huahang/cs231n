@@ -6,3 +6,6 @@ future
 torch
 torchvision
 torchaudio
+jupyterlab
+notebook
+voila
