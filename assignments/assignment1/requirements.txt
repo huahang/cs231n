@@ -3,3 +3,6 @@ scipy
 matplotlib
 ipykernel
 future
+torch
+torchvision
+torchaudio
