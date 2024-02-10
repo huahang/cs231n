@@ -398,14 +398,14 @@ def conv_forward_naive(x, w, b, conv_param):
         for f in range(F):
             kernel = w[f]
             bias = b[f]
-            for height in range(H_out):
-                for width in range(W_out):
+            for i in range(H_out):
+                for j in range(W_out):
                     patch = x_pad[
                         n,
                         :,
-                        height*stride : height*stride + HH,
-                        width*stride : width*stride + WW]
-                    out[n, f, height, width] = np.sum(patch * kernel) + bias
+                        i*stride : i*stride + HH,
+                        j*stride : j*stride + WW]
+                    out[n, f, i, j] = np.sum(patch * kernel) + bias
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -431,10 +431,36 @@ def conv_backward_naive(dout, cache):
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
     x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
     pad = conv_param['pad']
     stride = conv_param['stride']
-    dx = np.zeros(x.shape)
+    H_out = 1 + (H + 2 * pad - HH) // stride
+    W_out = 1 + (W + 2 * pad - WW) // stride
+    x_pad = np.pad(x,
+                   pad_width = ((0, 0), (0, 0), (pad, pad), (pad, pad)),
+                   mode = 'constant',
+                   constant_values = 0)
+    dx = np.zeros(x.shape) # N x C x H x W
+    dx_pad = np.zeros(x_pad.shape) # N x C x H_pad x W_pad
     dw = np.zeros(w.shape)
+    # dL/dout: (N x F x H_out x W_out)
+    # dout/dw: (N x F x H_out x W_out) x (WW x HH x C x F)
+    # dL/dout: (N x F x H_out x W_out)
+    # dout/db: (N x F x H_out x W_out) x (F)
+    for n in range(N):
+        for f in range(F):
+            kernel = w[f]
+            for i in range(H_out):
+                for j in range(W_out):
+                    patch = x_pad[
+                        n,
+                        :,
+                        i*stride : i*stride + HH,
+                        j*stride : j*stride + WW]
+                    dw[f] += patch * dout[n, f, i, j]
+                    dx_pad[n, :, i*stride : i*stride + HH, j*stride : j*stride + WW] += kernel * dout[n, f, i, j]
+    dx = dx_pad[:, :, pad : -pad, pad : -pad]
     db = dout.sum(axis = (0, 2, 3))
     ###########################################################################
     #                             END OF YOUR CODE                            #
