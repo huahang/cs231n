@@ -378,7 +378,34 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pass
+    N = x.shape[0]
+    C = x.shape[1]
+    H = x.shape[2]
+    W = x.shape[3]
+    F = w.shape[0]
+    HH = w.shape[2]
+    WW = w.shape[3]
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    H_out = 1 + (H + 2 * pad - HH) // stride
+    W_out = 1 + (W + 2 * pad - WW) // stride
+    out = np.zeros((N, F, H_out, W_out))
+    x_pad = np.pad(x,
+                   pad_width = ((0, 0), (0, 0), (pad, pad), (pad, pad)),
+                   mode = 'constant',
+                   constant_values = 0)
+    for n in range(N):
+        for f in range(F):
+            kernel = w[f]
+            bias = b[f]
+            for height in range(H_out):
+                for width in range(W_out):
+                    patch = x_pad[
+                        n,
+                        :,
+                        height*stride : height*stride + HH,
+                        width*stride : width*stride + WW]
+                    out[n, f, height, width] = np.sum(patch * kernel) + bias
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -403,7 +430,12 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    x, w, b, conv_param = cache
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+    dx = np.zeros(x.shape)
+    dw = np.zeros(w.shape)
+    db = dout.sum(axis = (0, 2, 3))
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
