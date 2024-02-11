@@ -48,7 +48,31 @@ class ThreeLayerConvNet(object):
         # hidden affine layer, and keys 'W3' and 'b3' for the weights and biases   #
         # of the output affine layer.                                              #
         ############################################################################
-        pass
+        self.input_dim = input_dim
+        self.num_filters = num_filters
+        self.filter_size = filter_size
+        self.hidden_dim = hidden_dim
+        self.num_classes = num_classes
+        self.C = input_dim[0]
+        self.F = num_filters
+        self.K = filter_size
+        self.H = input_dim[1]
+        self.W = input_dim[2]
+        self.pad = (filter_size - 1) // 2
+        self.stride = 1
+        self.pool_height = 2
+        self.pool_width = 2
+        self.pool_stride = 2
+        self.H_out = 1 + (self.H + 2 * self.pad - self.K) // self.stride
+        self.W_out = 1 + (self.W + 2 * self.pad - self.K) // self.stride
+        self.H_pool = 1 + (self.H_out - self.pool_height) // self.pool_stride
+        self.W_pool = 1 + (self.W_out - self.pool_width) // self.pool_stride
+        self.params["W1"] = np.random.normal(0, 1 / (self.K * self.K), (self.F, self.C, self.K, self.K))
+        self.params["b1"] = np.zeros(self.F)
+        self.params["W2"] = np.random.normal(0, 1 / hidden_dim, (self.F * self.H_pool * self.W_pool, self.hidden_dim))
+        self.params["b2"] = np.zeros(self.hidden_dim)
+        self.params["W3"] = np.random.normal(0, 1 / num_classes, (self.hidden_dim, self.num_classes))
+        self.params["b3"] = np.zeros(self.num_classes)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -69,10 +93,12 @@ class ThreeLayerConvNet(object):
 
         # pass conv_param to the forward pass for the convolutional layer
         filter_size = W1.shape[2]
-        conv_param = {'stride': 1, 'pad': (filter_size - 1) // 2}
+        conv_param = {'stride': self.stride, 'pad': self.pad}
 
         # pass pool_param to the forward pass for the max-pooling layer
-        pool_param = {'pool_height': 2, 'pool_width': 2, 'stride': 2}
+        pool_param = {'pool_height': self.pool_height,
+                      'pool_width': self.pool_width,
+                      'stride': self.pool_stride}
 
         scores = None
         ############################################################################
@@ -80,7 +106,9 @@ class ThreeLayerConvNet(object):
         # computing the class scores for X and storing them in the scores          #
         # variable.                                                                #
         ############################################################################
-        pass
+        X, self.cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+        X, self.cache2 = affine_relu_forward(X, W2, b2)
+        scores, self.cache3 = affine_forward(X, W3, b3)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -95,7 +123,20 @@ class ThreeLayerConvNet(object):
         # data loss using softmax, and make sure that grads[k] holds the gradients #
         # for self.params[k]. Don't forget to add L2 regularization!               #
         ############################################################################
-        pass
+        loss, dscores = softmax_loss(scores, y)
+        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2) + np.sum(W3 * W3))
+        dX, dW3, db3 = affine_backward(dscores, self.cache3)
+        dW3 += self.reg * W3
+        dX, dW2, db2 = affine_relu_backward(dX, self.cache2)
+        dW2 += self.reg * W2
+        dX, dW1, db1 = conv_relu_pool_backward(dX, self.cache1)
+        dW1 += self.reg * W1
+        grads["W1"] = dW1
+        grads["b1"] = db1
+        grads["W2"] = dW2
+        grads["b2"] = db2
+        grads["W3"] = dW3
+        grads["b3"] = db3
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
