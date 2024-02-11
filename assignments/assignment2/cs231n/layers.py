@@ -586,27 +586,9 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # be very short; ours is less than five lines.                            #
     ###########################################################################
     N, C, H, W = x.shape
-    running_mean = bn_param.get(
-        'running_mean',
-        np.zeros(shape = (1, C, 1, 1), dtype = x.dtype))
-    running_var = bn_param.get(
-        'running_var',
-        np.zeros(shape = (1, C, 1, 1), dtype = x.dtype))
-    momentum = bn_param.get('momentum', 0.9)
-    eps = bn_param.get('eps', 1e-5)
-
-    if bn_param["mode"] == "test":
-        x_hat = (x - running_mean) / np.sqrt(running_var + eps)
-        out = gamma * x_hat + beta
-        cache = (x, x_hat, gamma, beta, running_mean, running_var, eps)
-    if bn_param["mode"] == "train":
-        sample_mean = x.mean(axis = (0, 2, 3), keepdims = True)
-        sample_var = x.var(axis = (0, 2, 3), keepdims = True)
-        x_hat = (x - sample_mean) / np.sqrt(sample_var + eps)
-        out = gamma.reshape(sample_var.shape) * x_hat + beta.reshape(sample_mean.shape)
-        cache = (x, x_hat, gamma, beta, sample_var, sample_mean, eps)
-        bn_param["running_mean"] = momentum * running_mean + (1 - momentum) * sample_mean
-        bn_param["running_var"] = momentum * running_var + (1 - momentum) * sample_var
+    x_flat = x.transpose(0, 2, 3, 1).reshape(-1, C)
+    out_flat, cache = batchnorm_forward(x_flat, gamma, beta, bn_param)
+    out = out_flat.reshape(N, H, W, C).transpose(0, 3, 1, 2)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -636,7 +618,10 @@ def spatial_batchnorm_backward(dout, cache):
     # version of batch normalization defined above. Your implementation should#
     # be very short; ours is less than five lines.                            #
     ###########################################################################
-    pass
+    N, C, H, W = dout.shape
+    dout_flat = dout.transpose(0, 2, 3, 1).reshape(-1, C)
+    dx_flat, dgamma, dbeta = batchnorm_backward(dout_flat, cache)
+    dx = dx_flat.reshape(N, H, W, C).transpose(0, 3, 1, 2)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
