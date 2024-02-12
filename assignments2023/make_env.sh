@@ -10,3 +10,8 @@ conda install \
   pytorch \
   torchvision \
   jupyterlab \
+  matplotlib \
+  h5py \
+  imageio \
+  scipy \
+  numpy \
