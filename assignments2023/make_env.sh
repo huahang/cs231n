@@ -6,7 +6,6 @@ conda install \
   -c pytorch \
   -c nvidia \
   -c conda-forge \
-  pytorch-cuda \
   pytorch \
   torchvision \
   jupyterlab \
@@ -15,3 +14,14 @@ conda install \
   imageio \
   scipy \
   numpy \
+
+OS=$(uname)
+
+if [ "$OS" = "Linux" ]; then
+    echo "This is Linux"
+    conda install -c pytorch -c nvidia -c conda-forge pytorch-cuda
+elif [ "$OS" = "Darwin" ]; then
+    echo "This is Mac"
+else
+    echo "Unknown OS"
+fi
