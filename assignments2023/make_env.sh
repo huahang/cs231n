@@ -14,6 +14,7 @@ conda install \
   imageio \
   scipy \
   numpy \
+  opencv
 
 OS=$(uname)
 
