@@ -120,9 +120,10 @@ def detection_visualizer(img, idx_to_class, bbox=None, pred=None, points=None):
                 )
             )
             if len(single_bbox) > 4:  # if class info provided
-                obj_cls = idx_to_class[single_bbox[4].item()]
+                obj_idx = single_bbox[4].item()
+                obj_cls = idx_to_class[obj_idx]
                 ax.text(
-                    x0, y0, obj_cls, size=18, family="sans-serif",
+                    x0, y0, f"{obj_cls}<{obj_idx}>", size=18, family="sans-serif",
                     bbox={
                         "facecolor": "black", "alpha": 0.8,
                         "pad": 0.7, "edgecolor": "none"
