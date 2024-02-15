@@ -39,6 +39,7 @@ class DetectorBackboneWithFPN(nn.Module):
 
         # Initialize with ImageNet pre-trained weights.
         _cnn = models.regnet_x_400mf(weights="RegNet_X_400MF_Weights.DEFAULT")
+        print(list(_cnn.children()))
 
         # Torchvision models only return features from the last level. Detector
         # backbones (with FPN) require intermediate features of different scales.
