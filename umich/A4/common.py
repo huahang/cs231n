@@ -113,12 +113,12 @@ class DetectorBackboneWithFPN(nn.Module):
         # Add THREE lateral 1x1 conv and THREE output 3x3 conv layers.
         self.fpn_params = nn.ModuleDict()
 
-        self.fpn_params['l3'] = nn.Conv2d(dummy_out_shapes[0][1][1], self.out_channels, 1, 1, 0) # lateral layers added to dictionary
-        self.fpn_params['l4'] = nn.Conv2d(dummy_out_shapes[1][1][1], self.out_channels, 1, 1, 0)
-        self.fpn_params['l5'] = nn.Conv2d(dummy_out_shapes[2][1][1], self.out_channels, 1, 1, 0)
-        self.fpn_params['p3'] = nn.Conv2d(self.out_channels,self.out_channels,3,1,1) # output layers
-        self.fpn_params['p4'] = nn.Conv2d(self.out_channels,self.out_channels,3,1,1)
-        self.fpn_params['p5'] = nn.Conv2d(self.out_channels,self.out_channels,3,1,1)
+        self.fpn_params['l3'] = nn.Conv2d(dummy_out_shapes[0][1][1], self.out_channels, kernel_size=1, stride=1, padding=0) # lateral layers
+        self.fpn_params['l4'] = nn.Conv2d(dummy_out_shapes[1][1][1], self.out_channels, kernel_size=1, stride=1, padding=0)
+        self.fpn_params['l5'] = nn.Conv2d(dummy_out_shapes[2][1][1], self.out_channels, kernel_size=1, stride=1, padding=0)
+        self.fpn_params['p3'] = nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1) # output layers
+        self.fpn_params['p4'] = nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1)
+        self.fpn_params['p5'] = nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1)
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -200,7 +200,12 @@ def get_fpn_location_coords(
         # TODO: Implement logic to get location co-ordinates below.          #
         ######################################################################
         # Replace "pass" statement with your code
-        pass
+        x = level_stride*torch.arange(0.5, feat_shape[3] + 0.5, step=1, dtype=dtype, device=device)
+        y = level_stride*torch.arange(0.5,feat_shape[2]+0.5,step=1,dtype=dtype,device=device)
+        (xGrid, yGrid) = torch.meshgrid(x,y,indexing='xy')
+        xGrid = xGrid.unsqueeze(dim=-1)
+        yGrid = yGrid.unsqueeze(dim=-1)
+        location_coords[level_name] = torch.cat((xGrid,yGrid),dim=2).view(feat_shape[3]*feat_shape[2],2)
         ######################################################################
         #                             END OF YOUR CODE                       #
         ######################################################################
