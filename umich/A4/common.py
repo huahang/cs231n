@@ -6,6 +6,8 @@ walk through the notebooks and you will find instructions on *when* to implement
 """
 from typing import Dict, Tuple
 
+import re
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -33,13 +35,13 @@ class DetectorBackboneWithFPN(nn.Module):
     backbone that can work with Colab GPU and get decent enough performance.
     """
 
-    def __init__(self, out_channels: int):
+    def __init__(self, out_channels: int, debug: bool = False):
         super().__init__()
         self.out_channels = out_channels
+        self.debug = debug
 
         # Initialize with ImageNet pre-trained weights.
         _cnn = models.regnet_x_400mf(weights="RegNet_X_400MF_Weights.DEFAULT")
-        print(list(_cnn.children()))
 
         # Torchvision models only return features from the last level. Detector
         # backbones (with FPN) require intermediate features of different scales.
@@ -55,6 +57,32 @@ class DetectorBackboneWithFPN(nn.Module):
             },
         )
 
+        # Inspect the backbone network
+        if self.debug:
+            print(list(_cnn.children()))
+            for name, module in _cnn.named_modules():
+                print(name)
+                def hook_module(m, name):
+                    m.name = name
+                    def inspect_block(m, i, o):
+                        print(f"{m.name} hooked")
+                        print("Input shape:", i[0].shape)
+                        print("Output shape:", o.shape)
+                    m.register_forward_hook(inspect_block)
+                if re.match(r'^trunk_output\.block\d+$', name):
+                    hook_module(module, name)
+                    continue
+                if re.match(r'^stem\.\d+$', name):
+                    hook_module(module, name)
+                    continue
+                if name == "fc" or name == "avgpool":
+                    hook_module(module, name)
+                    continue
+            cnn_out = _cnn(torch.randn(2, 3, 333, 333))
+            print("CNN out:", cnn_out.shape)
+            cnn_out = _cnn(torch.randn(2, 3, 224, 224))
+            print("CNN out:", cnn_out.shape)
+
         # Pass a dummy batch of input images to infer shapes of (c3, c4, c5).
         # Features are a dictionary with keys as defined above. Values are
         # batches of tensors in NCHW format, that give intermediate features
@@ -62,6 +90,7 @@ class DetectorBackboneWithFPN(nn.Module):
         dummy_out = self.backbone(torch.randn(2, 3, 224, 224))
         dummy_out_shapes = [(key, value.shape) for key, value in dummy_out.items()]
 
+        print(dummy_out.keys())
         print("For dummy input images with shape: (2, 3, 224, 224)")
         for level_name, feature_shape in dummy_out_shapes:
             print(f"Shape of {level_name} features: {feature_shape}")
