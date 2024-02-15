@@ -38,7 +38,7 @@ class DetectorBackboneWithFPN(nn.Module):
         self.out_channels = out_channels
 
         # Initialize with ImageNet pre-trained weights.
-        _cnn = models.regnet_x_400mf(pretrained=True)
+        _cnn = models.regnet_x_400mf(weights="RegNet_X_400MF_Weights.DEFAULT")
 
         # Torchvision models only return features from the last level. Detector
         # backbones (with FPN) require intermediate features of different scales.
@@ -83,8 +83,12 @@ class DetectorBackboneWithFPN(nn.Module):
         # Add THREE lateral 1x1 conv and THREE output 3x3 conv layers.
         self.fpn_params = nn.ModuleDict()
 
-        # Replace "pass" statement with your code
-        pass
+        self.fpn_params['l3'] = nn.Conv2d(dummy_out_shapes[0][1][1], self.out_channels, 1, 1, 0) # lateral layers added to dictionary
+        self.fpn_params['l4'] = nn.Conv2d(dummy_out_shapes[1][1][1], self.out_channels, 1, 1, 0)
+        self.fpn_params['l5'] = nn.Conv2d(dummy_out_shapes[2][1][1], self.out_channels, 1, 1, 0)
+        self.fpn_params['p3'] = nn.Conv2d(self.out_channels,self.out_channels,3,1,1) # output layers
+        self.fpn_params['p4'] = nn.Conv2d(self.out_channels,self.out_channels,3,1,1)
+        self.fpn_params['p5'] = nn.Conv2d(self.out_channels,self.out_channels,3,1,1)
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -109,9 +113,18 @@ class DetectorBackboneWithFPN(nn.Module):
         # (c3, c4, c5) and FPN conv layers created above.                    #
         # HINT: Use `F.interpolate` to upsample FPN features.                #
         ######################################################################
+        lat3 = self.fpn_params['l3'](backbone_feats['c3'])
+        lat4 = self.fpn_params['l4'](backbone_feats['c4'])
+        lat5 = self.fpn_params['l5'](backbone_feats['c5'])
 
-        # Replace "pass" statement with your code
-        pass
+        lat5_resize = nn.functional.interpolate(lat5, size=(lat4.shape[2],lat4.shape[3]), mode='nearest')
+        lat4 = lat4 + lat5_resize
+        lat4_resize = nn.functional.interpolate(lat4, size=(lat3.shape[2],lat3.shape[3]), mode='nearest')
+        lat3 = lat3 + lat4_resize
+
+        fpn_feats['p3'] = self.fpn_params['p3'](lat3)
+        fpn_feats['p4'] = self.fpn_params['p4'](lat4)
+        fpn_feats['p5'] = self.fpn_params['p5'](lat5)
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
