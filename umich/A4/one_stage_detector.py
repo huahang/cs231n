@@ -259,6 +259,7 @@ def fcos_match_locations_to_gt(
         stride = strides_per_fpn_level[level_name]
 
         x, y = centers.unsqueeze(dim=2).unbind(dim=1)
+
         x0, y0, x1, y1 = gt_boxes[:, :4].unsqueeze(dim=0).unbind(dim=2)
         pairwise_dist = torch.stack([x - x0, y - y0, x1 - x, y1 - y], dim=2)
 
@@ -336,14 +337,17 @@ def fcos_get_deltas_from_locations(
     ##########################################################################
     # Set this to Tensor of shape (N, 4) giving deltas (left, top, right, bottom)
     # from the locations to GT box edges, normalized by FPN stride.
-    deltas = None
-
-    # Replace "pass" statement with your code
-    pass
+    assert locations.shape[0] == gt_boxes.shape[0]
+    N = locations.shape[0]
+    deltas = torch.zeros(N, 4)
+    boxes = gt_boxes[:, :4]
+    deltas = (boxes.view(N, 2, 2) - locations.view(N, 1, 2)).view(N, 4)
+    deltas[:, 0:2] = deltas[:, 0:2].neg()
+    deltas /= stride
+    deltas[gt_boxes[:, 0] < 0] = -1
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
-
     return deltas
 
 
@@ -381,11 +385,17 @@ def fcos_apply_deltas_to_locations(
     # box. Make sure to clip them to zero.                                   #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    assert locations.shape[0] == deltas.shape[0]
+    N = locations.shape[0]
+    deltas_with_stride = deltas * stride
+    deltas_with_stride[:, 0:2] = deltas_with_stride[:, 0:2].neg()
+    deltas_with_stride = deltas_with_stride.view(N, 2, 2)
+    output_boxes = locations.view(N, 1, 2) + deltas_with_stride
+    output_boxes = output_boxes.view(N, 4)
+    output_boxes[deltas[:, 0] < 0] = -1
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
-
     return output_boxes
 
 
@@ -411,7 +421,16 @@ def fcos_make_centerness_targets(deltas: torch.Tensor):
     ##########################################################################
     centerness = None
     # Replace "pass" statement with your code
-    pass
+    N = deltas.shape[0]
+    centerness = torch.zeros(N)
+    i, j = deltas[:,[0,2]], deltas[:,[1,3]]
+    min_i = torch.min(i, dim = 1).values
+    min_j = torch.min(j, dim = 1).values
+    max_i = torch.max(i, dim = 1).values
+    max_j = torch.max(j, dim = 1).values
+    centerness = (min_i / max_i) * (min_j / max_j)
+    centerness = torch.sqrt(centerness)
+    centerness[deltas[:, 0] < 0] = -1
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
