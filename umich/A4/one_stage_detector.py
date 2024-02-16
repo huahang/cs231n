@@ -389,9 +389,9 @@ def fcos_apply_deltas_to_locations(
     N = locations.shape[0]
     deltas_with_stride = deltas * stride
     deltas_with_stride[:, 0:2] = deltas_with_stride[:, 0:2].neg()
-    deltas_with_stride = deltas_with_stride.view(N, 2, 2)
-    output_boxes = locations.view(N, 1, 2) + deltas_with_stride
-    output_boxes = output_boxes.view(N, 4)
+    deltas_with_stride = deltas_with_stride.reshape(N, 2, 2)
+    output_boxes = locations.reshape(N, 1, 2) + deltas_with_stride
+    output_boxes = output_boxes.reshape(N, 4)
     output_boxes[deltas[:, 0] < 0] = -1
     ##########################################################################
     #                             END OF YOUR CODE                           #
@@ -448,9 +448,14 @@ class FCOS(nn.Module):
     """
 
     def __init__(
-        self, num_classes: int, fpn_channels: int, stem_channels: List[int]
+        self,
+        num_classes: int,
+        fpn_channels: int,
+        stem_channels: List[int],
+        debug: bool = False,
     ):
         super().__init__()
+        self.debug = debug
         self.num_classes = num_classes
 
         ######################################################################
@@ -460,7 +465,8 @@ class FCOS(nn.Module):
         self.backbone = None
         self.pred_net = None
         # Replace "pass" statement with your code
-        pass
+        self.backbone = DetectorBackboneWithFPN(fpn_channels)
+        self.pred_net = FCOSPredictionNetwork(num_classes, fpn_channels, stem_channels)
         ######################################################################
         #                           END OF YOUR CODE                         #
         ######################################################################
@@ -502,9 +508,19 @@ class FCOS(nn.Module):
         # logits, deltas, and centerness.                                    #
         ######################################################################
         # Feel free to delete this line: (but keep variable names same)
-        pred_cls_logits, pred_boxreg_deltas, pred_ctr_logits = None, None, None
         # Replace "pass" statement with your code
-        pass
+        fpn_features = self.backbone(images)
+        pred_cls_logits, pred_boxreg_deltas, pred_ctr_logits = self.pred_net(fpn_features)
+        if self.debug:
+            print("images", images.shape)
+            for level, feature in fpn_features.items():
+                print(level, "feature", feature.shape)
+            for level, logits in pred_cls_logits.items():
+                print(level, "class", logits.shape)
+            for level, deltas in pred_boxreg_deltas.items():
+                print(level, "delta", deltas.shape)
+            for level, logits in pred_ctr_logits.items():
+                print(level, "centerness", logits.shape)
 
         ######################################################################
         # TODO: Get absolute co-ordinates `(xc, yc)` for every location in
@@ -514,9 +530,12 @@ class FCOS(nn.Module):
         # call the functions properly.
         ######################################################################
         # Feel free to delete this line: (but keep variable names same)
-        locations_per_fpn_level = None
         # Replace "pass" statement with your code
-        pass
+        fpn_feats_shapes = {
+            level_name: feat.shape for level_name, feat in fpn_features.items()
+        }
+        locations_per_fpn_level = get_fpn_location_coords(fpn_feats_shapes, self.backbone.fpn_strides)
+
         ######################################################################
         #                           END OF YOUR CODE                         #
         ######################################################################
@@ -675,21 +694,53 @@ class FCOS(nn.Module):
             level_pred_scores = torch.sqrt(
                 level_cls_logits.sigmoid_() * level_ctr_logits.sigmoid_()
             )
+            if self.debug:
+                print(level_name, "level_pred_scores", level_pred_scores.shape)
             # Step 1:
             # Replace "pass" statement with your code
-            pass
+            level_pred_scores, pred_classes = level_pred_scores.max(dim=1)
+            if self.debug:
+                print(level_name, "level_pred_scores", level_pred_scores.shape)
+                print(level_name, "pred_classes", pred_classes.shape)
 
             # Step 2:
             # Replace "pass" statement with your code
-            pass
+            retain = level_pred_scores > test_score_thresh
+            level_pred_classes = pred_classes[retain]
+            level_pred_scores = level_pred_scores[retain]
+            if self.debug:
+                print(level_name, "level_pred_classes.shape", level_pred_classes.shape)
+                print(level_name, "level_pred_scores.shape", level_pred_scores.shape)
 
             # Step 3:
             # Replace "pass" statement with your code
-            pass
+            if self.debug:
+                print(level_name, "level_deltas", level_deltas.shape)
+                print(level_name, "level_locations", level_locations.shape)
+            level_pred_boxes = fcos_apply_deltas_to_locations(
+                level_deltas,
+                level_locations,
+                stride=self.backbone.fpn_strides[level_name],
+            )
+            if self.debug:
+                print(level_name, "level_pred_boxes", level_pred_boxes.shape)
+            level_pred_boxes = level_pred_boxes[retain]
+            if self.debug:
+                print(level_name, "level_pred_boxes", level_pred_boxes.shape)
+            keep = (level_deltas[retain].sum(dim=1) != -4)
+            level_pred_scores = level_pred_scores[keep]
+            level_pred_classes = level_pred_classes[keep]
+            level_pred_boxes = level_pred_boxes[keep]
+            if self.debug:
+                print(level_name, "level_pred_boxes", level_pred_boxes.shape)
 
             # Step 4: Use `images` to get (height, width) for clipping.
             # Replace "pass" statement with your code
-            pass
+            height, width = images.shape[2], images.shape[3]
+            level_pred_boxes[:,0] = level_pred_boxes[:,0].clip(min=0)
+            level_pred_boxes[:,1] = level_pred_boxes[:,1].clip(min=0)
+            level_pred_boxes[:,2] = level_pred_boxes[:,2].clip(max=height)
+            level_pred_boxes[:,3] = level_pred_boxes[:,3].clip(max=width)
             ##################################################################
             #                          END OF YOUR CODE                      #
             ##################################################################
