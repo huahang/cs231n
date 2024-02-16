@@ -29,7 +29,11 @@ class FCOSPredictionNetwork(nn.Module):
     """
 
     def __init__(
-        self, num_classes: int, in_channels: int, stem_channels: List[int]
+        self,
+        num_classes: int,
+        in_channels: int,
+        stem_channels: List[int],
+        debug: bool = False,
     ):
         """
         Args:
@@ -57,6 +61,8 @@ class FCOSPredictionNetwork(nn.Module):
         # at every location in feature map, we shouldn't "lose" any locations.
         ######################################################################
         # Fill these.
+        self.debug = debug
+
         stem_cls = []
         stem_box = []
 
@@ -64,17 +70,17 @@ class FCOSPredictionNetwork(nn.Module):
         inputSize = in_channels
         for outputSize in stem_channels:
           # cls
-          convLayer1 = nn.Conv2d(inputSize, outputSize,3,1,1)
+          convLayer1 = nn.Conv2d(inputSize, outputSize, kernel_size=3, stride=1, padding=1)
           ReLU1 = nn.ReLU()
           torch.nn.init.kaiming_normal_(convLayer1.weight)
           torch.nn.init.constant_(convLayer1.bias, 0)
           stem_cls.append(convLayer1)
           stem_cls.append(ReLU1)
           # box
-          convLayer2 = nn.Conv2d(inputSize, outputSize,3,1,1)
+          convLayer2 = nn.Conv2d(inputSize, outputSize, kernel_size=3, stride=1, padding=1)
           ReLU2 = nn.ReLU()
           torch.nn.init.kaiming_normal_(convLayer2.weight)
-          torch.nn.init.constant_(convLayer2.bias,0)
+          torch.nn.init.constant_(convLayer2.bias, 0)
           stem_box.append(convLayer2)
           stem_box.append(ReLU2)
           inputSize = outputSize
@@ -105,15 +111,15 @@ class FCOSPredictionNetwork(nn.Module):
         self.pred_ctr = None  # Centerness conv
 
         # Replace "pass" statement with your code
-        self.pred_cls = nn.Conv2d(stem_channels[-1],num_classes,3,1,1)
+        self.pred_cls = nn.Conv2d(stem_channels[-1], num_classes, kernel_size=3, stride=1, padding=1)
         torch.nn.init.kaiming_normal_(self.pred_cls.weight)
         torch.nn.init.constant_(self.pred_cls.bias, 0)
 
-        self.pred_box = nn.Conv2d(stem_channels[-1], 4, 3,1,1)
+        self.pred_box = nn.Conv2d(stem_channels[-1], 4, kernel_size=3, stride=1, padding=1)
         torch.nn.init.kaiming_normal_(self.pred_box.weight)
         torch.nn.init.constant_(self.pred_box.bias, 0)
 
-        self.pred_ctr = nn.Conv2d(stem_channels[-1], 1, 3,1,1)
+        self.pred_ctr = nn.Conv2d(stem_channels[-1], 1, kernel_size=3, stride=1, padding=1)
         torch.nn.init.kaiming_normal_(self.pred_ctr.weight)
         torch.nn.init.constant_(self.pred_ctr.bias, 0)
         ######################################################################
@@ -163,17 +169,41 @@ class FCOSPredictionNetwork(nn.Module):
 
         # Replace "pass" statement with your code
         for level, feature in feats_per_fpn_level.items():
-          class_logits[level] = self.pred_cls(self.stem_cls(feature))
-          B = class_logits[level].shape[0]
-          N = class_logits[level].shape[1]
-          class_logits[level] = class_logits[level].view(B, N, -1).permute(0, 2, 1)
-
-          stemOutput = self.stem_box(feature)
-          boxreg_deltas[level] = self.pred_box(stemOutput)
-          boxreg_deltas[level] = boxreg_deltas[level].view(B, 4, -1).permute(0, 2, 1)
-
-          centerness_logits[level] = self.pred_ctr(stemOutput)
-          centerness_logits[level] = centerness_logits[level].view(B, 1, -1).permute(0, 2, 1)
+            if self.debug:
+                print(level, "feature", feature.shape)
+            # the classification branch
+            feature_cls = self.stem_cls(feature)
+            if self.debug:
+                print(level, "feature_cls after stem", feature_cls.shape)
+            feature_cls = self.pred_cls(feature_cls)
+            if self.debug:
+                print(level, "feature_cls after pred", feature_cls.shape)
+            B = feature_cls.shape[0] # batch size
+            N = feature_cls.shape[1] # number of classes
+            if self.debug:
+                print(level, "B", B, "N", N)
+            feature_cls = feature_cls.view(B, N, -1).permute(0, 2, 1)
+            if self.debug:
+                print(level, "FINAL feature_cls", feature_cls.shape)
+            class_logits[level] = feature_cls
+            # the box regression and centerness branch
+            feature_box_stem = self.stem_box(feature)
+            if self.debug:
+                print(level, "feature_box after stem", feature_box_stem.shape)
+            feature_box = self.pred_box(feature_box_stem)
+            if self.debug:
+                print(level, "feature_box after pred", feature_box.shape)
+            feature_box = feature_box.view(B, 4, -1).permute(0, 2, 1)
+            if self.debug:
+                print(level, "FINAL feature_box", feature_box.shape)
+            boxreg_deltas[level] = feature_box
+            feature_ctr = self.pred_ctr(feature_box_stem)
+            if self.debug:
+                print(level, "feature_ctr after pred", feature_ctr.shape)
+            feature_ctr = feature_ctr.view(B, 1, -1).permute(0, 2, 1)
+            if self.debug:
+                print(level, "FINAL feature_ctr", feature_ctr.shape)
+            centerness_logits[level] = feature_ctr
 
         ######################################################################
         #                           END OF YOUR CODE                         #

@@ -195,17 +195,18 @@ def get_fpn_location_coords(
 
     for level_name, feat_shape in shape_per_fpn_level.items():
         level_stride = strides_per_fpn_level[level_name]
-
         ######################################################################
         # TODO: Implement logic to get location co-ordinates below.          #
         ######################################################################
         # Replace "pass" statement with your code
-        x = level_stride*torch.arange(0.5, feat_shape[3] + 0.5, step=1, dtype=dtype, device=device)
-        y = level_stride*torch.arange(0.5,feat_shape[2]+0.5,step=1,dtype=dtype,device=device)
-        (xGrid, yGrid) = torch.meshgrid(x,y,indexing='xy')
-        xGrid = xGrid.unsqueeze(dim=-1)
-        yGrid = yGrid.unsqueeze(dim=-1)
-        location_coords[level_name] = torch.cat((xGrid,yGrid),dim=2).view(feat_shape[3]*feat_shape[2],2)
+        i = level_stride * torch.arange(0.5, feat_shape[2] + 0.5, step=1, dtype=dtype, device=device)
+        j = level_stride * torch.arange(0.5, feat_shape[3] + 0.5, step=1, dtype=dtype, device=device)
+        (i_grid, j_grid) = torch.meshgrid(i, j, indexing='ij')
+        i_grid = i_grid.unsqueeze(dim=-1)
+        j_grid = j_grid.unsqueeze(dim=-1)
+        grid = torch.cat((i_grid, j_grid), dim=2)
+        grid = grid.view(-1, 2)
+        location_coords[level_name] = grid
         ######################################################################
         #                             END OF YOUR CODE                       #
         ######################################################################
