@@ -559,9 +559,14 @@ class FCOS(nn.Module):
         ######################################################################
         # List of dictionaries with keys {"p3", "p4", "p5"} giving matched
         # boxes for locations per FPN level, per image. Fill this list:
-        matched_gt_boxes = []
         # Replace "pass" statement with your code
-        pass
+        matched_gt_boxes = fcos_match_locations_to_gt(
+            locations_per_fpn_level,
+            self.backbone.fpn_strides,
+            gt_boxes,
+        )
+        print("matched_gt_boxes", matched_gt_boxes.shape)
+        assert False
 
         # Calculate GT deltas for these matched boxes. Similar structure
         # as `matched_gt_boxes` above. Fill this list:
