@@ -1,7 +1,9 @@
 #!/bin/sh
 
 conda create -n cs231n python=3.8
+
 conda activate cs231n
+
 conda install \
   -c pytorch \
   -c nvidia \
@@ -17,6 +19,11 @@ conda install \
   opencv \
   pytorch-model-summary \
   hdf5 \
+  notebook \
+  pycocotools \
+  ipykernel \
+
+pip install fiftyone
 
 OS=$(uname)
 
