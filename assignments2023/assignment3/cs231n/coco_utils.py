@@ -57,7 +57,7 @@ def decode_captions(captions, idx_to_word):
     singleton = False
     if captions.ndim == 1:
         singleton = True
-        captions = captions[None]
+        captions = captions[None] # captions.reshape(1, captions.shape[0])
     decoded = []
     N, T = captions.shape
     for i in range(N):
