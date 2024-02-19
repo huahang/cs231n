@@ -14,7 +14,9 @@ conda install \
   imageio \
   scipy \
   numpy \
-  opencv
+  opencv \
+  pytorch-model-summary \
+  hdf5 \
 
 OS=$(uname)
 
