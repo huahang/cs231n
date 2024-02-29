@@ -34,7 +34,20 @@ def softmax_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, D = X.shape
+    C = W.shape[1]
+    f = np.matmul(X, W) # N x C
+    f -= np.max(f, axis=1).reshape((N, 1))
+    exp_f = np.exp(f) # N x C
+    sigma = np.sum(exp_f, axis=1).reshape((N))
+    softmax = exp_f / sigma.reshape((N, 1))
+    loss = - np.log(softmax[np.arange(N), y]).sum()
+    loss /= N
+    loss += 0.5 * reg * np.sum(W * W)
+    softmax[np.arange(N), y] -= 1
+    dW = np.matmul(X.reshape(N, D, 1), softmax.reshape(N, 1, C)).sum(axis=0)
+    dW /= N
+    dW += reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -59,7 +72,13 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = X.shape[0]
+    f = np.matmul(X, W) # (N, C)
+    f -= np.max(f, axis=1, keepdims=True)
+    softmax = np.exp(f) / np.exp(f).sum(axis=1, keepdims=True) # (N, C)
+    loss = np.sum(-np.log(softmax[np.arange(N), y])) / N + 0.5 * reg * np.sum(W * W)
+    softmax[np.arange(N), y] -= 1
+    dW = X.T.dot(softmax) / N + reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
